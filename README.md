@@ -1,0 +1,1 @@
+Sun seeker for solarpanels hobby project written in python. Using Raspberrypi
