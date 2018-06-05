@@ -39,8 +39,9 @@ class App(object):
         self.get_sun_pos()
         if(self.sunAltitude > self.altitudeMotor.get_pos()):
             self.altitudeMotor.move(self.CW, self.sunAltitude)
-        self.azimuthMotor.get_pos()
-        print(self.date, 'Altitude: ', self.sunAltitude)
+        if(self.sunAzimuth > self.azimuthMotor.get_pos()):
+            self.azimuthMotor.move(self.CW, self.sunAzimuth)
+        print('Sun altitude: {0:1f}\n Sun azimuth: {1:1f}\n'.format(self.sunAltitude, self.sunAzimuth))
 
     def setup_pins(self):
         #Ställ in GPIO utgångar
@@ -55,8 +56,9 @@ class App(object):
           
     def get_sun_pos(self):
         """Get sun altitude and azimuth using pysolar"""
-        self.sunAltitude = 30.0
-        self.sunAzimuth = 170.0
+        self.date = datetime.datetime.now()
+        self.sunAltitude = solar.get_altitude(self.latitude, self.longitude, self.date)
+        self.sunAzimuth = solar.get_azimuth(self.latitude, self.longitude, self.date)
 
     def run(self):
         startTime = time.time()
