@@ -35,17 +35,31 @@ class Motor(object):
         if not CCW:
             GPIO.output(self.dirPin, GPIO.HIGH)
             while(set_pos > self.get_pos()):
-                self.pulse_motor()
+                self.pulse()
         else:
             GPIO.output(self.dirPin, GPIO.LOW)
             while(set_pos < self.get_pos()):
-                self.pulse_motor()
+                self.pulse()
+        self.disable()
 
-        GPIO.output(self.enablePin, GPIO.HIGH)
+    def jog(self, buttonPressed, CCW=False):
+        """Run motor, takes in direction and suns position"""
+        GPIO.output(self.enablePin, GPIO.LOW)
+        if not CCW:
+            GPIO.output(self.dirPin, GPIO.HIGH)
+            while GPIO.input(buttonPressed):
+                self.pulse()
+        else:
+            GPIO.output(self.dirPin, GPIO.LOW)
+            while GPIO.input(buttonPressed):
+                self.pulse()
+        self.disable()
 
-    def pulse_motor(self):
+    def pulse(self):
         """pulse for stepper"""
         GPIO.output(self.stepPin, GPIO.HIGH)
         time.sleep(self.pulse_delay)
         GPIO.output(self.stepPin, GPIO.LOW)
         time.sleep(self.pulse_delay)
+    def disable(self):
+        GPIO.output(self.enablePin, GPIO.HIGH)
