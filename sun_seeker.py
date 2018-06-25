@@ -34,13 +34,14 @@ class App(object):
         self.jogCCW = int(self.config['GPIO']['jogCCW'])
         self.jogCW = int(self.config['GPIO']['jogCW'])
         self.jogMode = int(self.config['GPIO']['jogMode'])
+        self.wentToSunrise = False
         print('Init done')
         
 
 
     def check_altitude(self):
         print("Altitude motor pos:{} Sun altitude:{}".format(self.altitudeMotor.get_pos(), self.sunAltitude))
-        if(self.sunAltitude > self.altitudeMotor.get_pos() and self.sun_going_up(self.sunAltitude)):
+        if(self.sunAltitude > self.altitudeMotor.get_pos() and (self.sun_going_up(self.sunAltitude)) or self.sunAltitude - self.altitudeMotor.get_pos() > 2.0):
             self.altitudeMotor.move(self.sunAltitude, False)
         elif(self.sunAltitude < self.altitudeMotor.get_pos() and not self.sun_going_up(self.sunAltitude)):
             self.altitudeMotor.move(self.sunAltitude, True)
@@ -105,15 +106,29 @@ class App(object):
                 pass
         else:
             self.get_sun_pos()
-            self.check_altitude()
-            self.check_azimuth()
+            if(self.sunAltitude > 15.0):
+                self.check_altitude()
+                self.check_azimuth()
+                self.wentToSunrise = False
+            elif(self.sunAltitude < 15.0 and not self.wentToSunrise):
+                print('Sun to low\n')
+                next_pos = self.check_next_sunrise()
+                print('Going to {} pos.\n'.format(next_pos))
+                self.azimuthMotor.move(next_pos, True)
+                self.wentToSunrise = True
+            else:
+                pass
 
-
-
+    def check_next_sunrise(self):
+        """Check azimuth of next sunrise"""
+        new_date = self.date
+        while(solar.get_altitude(self.latitude, self.longitude, new_date) < 15.0):
+            print(new_date)
+            new_date += datetime.timedelta(minutes=10)
+        return self.offset(solar.get_azimuth(self.latitude, self.longitude, new_date))
+    
     def jog_mode(self):
        return GPIO.input(self.jogMode)
-
-
         
     def on_exit(self):
         """cleanup when app closes"""
