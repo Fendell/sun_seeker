@@ -10,7 +10,7 @@ class Motor(object):
     adc = Adafruit_ADS1x15.ADS1115()
 
     
-    def __init__(self, StepPin, DirPin, EnablePin, PosAdress, spr):
+    def __init__(self, StepPin, DirPin, EnablePin, PosAdress, spr, minPos, maxPos):
         self.stepPin = StepPin
         self.dirPin = DirPin
         self.enablePin = EnablePin
@@ -18,6 +18,8 @@ class Motor(object):
         self.pos = 0
         self.SPR = spr
         self.pulse_delay = 0.0005
+        self.min_pos = minPos
+        self.max_pos = maxPos
 
 
     def get_pos(self):
@@ -45,11 +47,11 @@ class Motor(object):
     def jog(self, buttonPressed, CCW=False):
         """Run motor, takes in direction and suns position"""
         GPIO.output(self.enablePin, GPIO.LOW)
-        if not CCW:
+        if not CCW and self.get_pos() < self.max_pos:
             GPIO.output(self.dirPin, GPIO.HIGH)
             while GPIO.input(buttonPressed):
                 self.pulse()
-        else:
+        elif CCW and self.get_pos() > self.min_pos:
             GPIO.output(self.dirPin, GPIO.LOW)
             while GPIO.input(buttonPressed):
                 self.pulse()

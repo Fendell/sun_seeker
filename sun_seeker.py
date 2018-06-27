@@ -20,13 +20,17 @@ class App(object):
                                    int(self.config['GPIO']['altitudemotordir']),
                                    int(self.config['GPIO']['altitudemotorenable']),
                                    int(self.config['SETTINGS']['altitudemotorPosAdress']),
-                                   int(self.config['SETTINGS']['altitudeMotorSPR']))
+                                   int(self.config['SETTINGS']['altitudeMotorSPR']),
+                                   int(self.config['SETTINGS']['altitudeMinpos']),
+                                   int(self.config['SETTINGS']['altitudeMaxpos']))
 
         self.azimuthMotor = Motor(int(self.config['GPIO']['azimuthmotorstep']),
                                   int(self.config['GPIO']['azimuthmotordir']),
                                   int(self.config['GPIO']['azimuthmotorenable']),
                                   int(self.config['SETTINGS']['azimuthmotorPosAdress']),
-                                  int(self.config['SETTINGS']['azimuthMotorSPR']))
+                                  int(self.config['SETTINGS']['azimuthMotorSPR']),
+                                  int(self.config['SETTINGS']['azimuthMinpos']),
+                                  int(self.config['SETTINGS']['azimuthMaxpos']))
         self.updateTime = 10.0
         self.sunAltitude = 0.0
         self.sunAzimuth = 0.0
@@ -34,7 +38,9 @@ class App(object):
         self.jogCCW = int(self.config['GPIO']['jogCCW'])
         self.jogCW = int(self.config['GPIO']['jogCW'])
         self.jogMode = int(self.config['GPIO']['jogMode'])
+        self.jogAltMotor = int(self.config['GPIO']['jogaltitudemotor'])
         self.wentToSunrise = False
+        self.running = False
         print('Init done')
         
 
@@ -72,6 +78,7 @@ class App(object):
         GPIO.setup(int(self.config['GPIO']['jogCCW']), GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
         GPIO.setup(int(self.config['GPIO']['jogCW']), GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
         GPIO.setup(int(self.config['GPIO']['jogMode']), GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+        GPIO.setup(int(self.config['GPIO']['jogAltitudemotor']), GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
           
     def get_sun_pos(self):
         """Get sun altitude and azimuth using pysolar"""
@@ -88,36 +95,44 @@ class App(object):
 
 
     def run(self):
-        """Start app"""
+        """Start app and main loop"""
         startTime = time.time()
+        self.running = True
         while True:
-            if(time.time() > startTime + self.updateTime):
+            if(time.time() > (startTime + self.updateTime) and not self.jog_mode()):
                 self.update()
                 startTime = time.time()
+            elif self.jog_mode():
+                self.jog()
+        
 
-    def update(self):
-        """Update App ,general things to do every cycle"""
-        if self.jog_mode():
-            if GPIO.input(self.jogCW) and not GPIO.input(self.jogCCW):
+    def jog(self):
+        if GPIO.input(self.jogCW) and not GPIO.input(self.jogCCW):
+            if not GPIO.input(self.jogAltMotor):
                 self.azimuthMotor.jog(self.jogCW, False)
-            elif GPIO.input(self.jogCCW) and not GPIO.input(self.jogCW):
+            else:
+                self.altitudeMotor.jog(self.jogCW, False)
+        elif GPIO.input(self.jogCCW) and not GPIO.input(self.jogCW):
+            if not GPIO.input(self.jogAltMotor):
                 self.azimuthMotor.jog(self.jogCCW, True)
             else:
-                pass
+                self.altitudeMotor.jog(self.jogCCW, True)
+                        
+    def update(self):
+        """Update App ,general things to do every cycle"""
+        self.get_sun_pos()
+        if(self.sunAltitude > 15.0):
+            self.check_altitude()
+            self.check_azimuth()
+            self.wentToSunrise = False
+        elif(self.sunAltitude < 15.0 and not self.wentToSunrise):
+            print('Sun to low\n')
+            next_pos = self.check_next_sunrise()
+            print('Going to {} pos.\n'.format(next_pos))
+            self.azimuthMotor.move(next_pos, True)
+            self.wentToSunrise = True
         else:
-            self.get_sun_pos()
-            if(self.sunAltitude > 15.0):
-                self.check_altitude()
-                self.check_azimuth()
-                self.wentToSunrise = False
-            elif(self.sunAltitude < 15.0 and not self.wentToSunrise):
-                print('Sun to low\n')
-                next_pos = self.check_next_sunrise()
-                print('Going to {} pos.\n'.format(next_pos))
-                self.azimuthMotor.move(next_pos, True)
-                self.wentToSunrise = True
-            else:
-                pass
+            pass
 
     def check_next_sunrise(self):
         """Check azimuth of next sunrise"""
