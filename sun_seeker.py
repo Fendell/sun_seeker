@@ -40,6 +40,7 @@ class App(object):
         self.jogMode = int(self.config['GPIO']['jogMode'])
         self.jogAltMotor = int(self.config['GPIO']['jogaltitudemotor'])
         self.wentToSunrise = False
+        self.isRunning = int(self.config['GPIO']['isRunning'])
         self.running = False
         print('Init done')
         
@@ -87,6 +88,7 @@ class App(object):
         self.sunAzimuth = self.offset(solar.get_azimuth(self.latitude, self.longitude, self.date))
 
     def offset(self, sun_value):
+        """offset between pot and pysolar"""
         offset = 180.0
         if abs(sun_value) >= 0 and abs(sun_value) < 180:
             return abs(sun_value) + offset
@@ -98,7 +100,8 @@ class App(object):
         """Start app and main loop"""
         startTime = time.time()
         self.running = True
-        while True:
+        while self.running:
+            GPIO.output(self.isRunning, GPIO.HIGH)
             if(time.time() > (startTime + self.updateTime) and not self.jog_mode()):
                 self.update()
                 startTime = time.time()
@@ -149,6 +152,7 @@ class App(object):
         """cleanup when app closes"""
         self.altitudeMotor.disable()
         self.azimuthMotor.disable()
+        GPIO.output(self.isRunning, GPIO.LOW)
         
         
 def main():
