@@ -4,44 +4,60 @@
 import logging
 import time
 from motor import Motor
-import configparser
 import datetime
 from pysolar import solar
 import RPi.GPIO as GPIO
 
 class App(object):
     date = datetime.datetime.now()
-    config = configparser.ConfigParser()
     def __init__(self):
-        self.config.read('config.ini')
-        self.longitude = float(self.config['SETTINGS']['longitude'])
-        self.latitude =  float(self.config['SETTINGS']['latitude'])
-        self.altitudeMotor = Motor(int(self.config['GPIO']['altitudemotorstep']),
-                                   int(self.config['GPIO']['altitudemotordir']),
-                                   int(self.config['GPIO']['altitudemotorenable']),
-                                   int(self.config['SETTINGS']['altitudemotorPosAdress']),
-                                   int(self.config['SETTINGS']['altitudeMotorSPR']),
-                                   int(self.config['SETTINGS']['altitudeMinpos']),
-                                   int(self.config['SETTINGS']['altitudeMaxpos']))
+        self.longitude = 13.01053
+        self.latitude =  56.69815
+        # Pins and settings for altitude motor
+        self.altitudeMotorStepPin = 21
+        self.altitudeMotorDirPin = 20
+        self.altitudeMotorEnablePin = 16
+        self.altitudeMotorPosAdress = 0 # Adress of i2c AD converter
+        self.altitudeMotorSPR = 400 # Steps per revolution
+        self.altitudeMotorMinPos = 2
+        self.altitudeMotorMaxPos = 70 
+        # create motor object
+        self.altitudeMotor = Motor(self.altitudeMotorStepPin,
+                                   self.altitudeMotorDirPin,
+                                   self.altitudeMotorEnablePin,
+                                   self.altitudeMotorPosAdress,
+                                   self.altitudeMotorSPR,
+                                   self.altitudeMotorMinPos,
+                                   self.altitudeMotorMaxPos)
 
-        self.azimuthMotor = Motor(int(self.config['GPIO']['azimuthmotorstep']),
-                                  int(self.config['GPIO']['azimuthmotordir']),
-                                  int(self.config['GPIO']['azimuthmotorenable']),
-                                  int(self.config['SETTINGS']['azimuthmotorPosAdress']),
-                                  int(self.config['SETTINGS']['azimuthMotorSPR']),
-                                  int(self.config['SETTINGS']['azimuthMinpos']),
-                                  int(self.config['SETTINGS']['azimuthMaxpos']))
+        # Pins and settings for azimuth motor
+        self.azimuthMotorStepPin = 26
+        self.azimuthMotorDirPin = 19
+        self.azimuthMotorEnablePin = 13
+        self.azimuthMotorPosAdress = 1 # Adress of i2c AD converter
+        self.azimuthMotorSPR = 400 # Steps per revolution
+        self.azimuthMotorMinPos = 20
+        self.azimuthMotorMaxPos = 280
+        # create motor object
+        self.azimuthMotor = Motor(self.azimuthMotorStepPin,
+                                   self.azimuthMotorDirPin,
+                                   self.azimuthMotorEnablePin,
+                                   self.azimuthMotorPosAdress,
+                                   self.azimuthMotorSPR,
+                                   self.azimuthMotorMinPos,
+                                   self.azimuthMotorMaxPos)
+        # settings
         self.updateTime = 10.0
         self.sunAltitude = 0.0
         self.sunAzimuth = 0.0
-        self.setup_pins()
-        self.jogCCW = int(self.config['GPIO']['jogCCW'])
-        self.jogCW = int(self.config['GPIO']['jogCW'])
-        self.jogMode = int(self.config['GPIO']['jogMode'])
-        self.jogAltMotor = int(self.config['GPIO']['jogaltitudemotor'])
+        self.jogCCW = 23
+        self.jogCW = 24
+        self.jogMode = 25
+        self.jogAltMotor = 18
         self.wentToSunrise = False
-        self.isRunning = int(self.config['GPIO']['isRunning'])
         self.running = False
+        self.isRunning = 6
+        self.setup_pins()
         print('Init done')
         
 
@@ -69,17 +85,17 @@ class App(object):
     def setup_pins(self):
         """Ställ in GPIO utgångar"""
         GPIO.setmode(GPIO.BCM)
-        GPIO.setup(int(self.config['GPIO']['altitudeMotorStep']), GPIO.OUT)
-        GPIO.setup(int(self.config['GPIO']['altitudeMotorDir']), GPIO.OUT)
-        GPIO.setup(int(self.config['GPIO']['altitudeMotorEnable']), GPIO.OUT)
-        GPIO.setup(int(self.config['GPIO']['azimuthMotorStep']), GPIO.OUT)
-        GPIO.setup(int(self.config['GPIO']['azimuthMotorDir']), GPIO.OUT)
-        GPIO.setup(int(self.config['GPIO']['azimuthMotorEnable']), GPIO.OUT)
-        GPIO.setup(int(self.config['GPIO']['isRunning']), GPIO.OUT)
-        GPIO.setup(int(self.config['GPIO']['jogCCW']), GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-        GPIO.setup(int(self.config['GPIO']['jogCW']), GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-        GPIO.setup(int(self.config['GPIO']['jogMode']), GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-        GPIO.setup(int(self.config['GPIO']['jogAltitudemotor']), GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+        GPIO.setup(self.altitudeMotorStepPin, GPIO.OUT)
+        GPIO.setup(self.altitudeMotorDirPin, GPIO.OUT)
+        GPIO.setup(self.altitudeMotorEnablePin, GPIO.OUT)
+        GPIO.setup(self.azimuthMotorStepPin, GPIO.OUT)
+        GPIO.setup(self.azimuthMotorDirPin, GPIO.OUT)
+        GPIO.setup(self.azimuthMotorEnablePin, GPIO.OUT)
+        GPIO.setup(self.isRunning, GPIO.OUT)
+        GPIO.setup(self.jogCCW, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+        GPIO.setup(self.jogCW, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+        GPIO.setup(self.jogMode, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+        GPIO.setup(self.jogAltMotor, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
           
     def get_sun_pos(self):
         """Get sun altitude and azimuth using pysolar"""
